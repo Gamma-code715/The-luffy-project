@@ -83,8 +83,8 @@ namespace The_luffy_project
         {
             Luffy.x = 50;
             Luffy.y = 50;
-            Luffy.w = 64;
-            Luffy.h = 64;
+            Luffy.w = 256;
+            Luffy.h = 256;
             
             for (int i = 0; i < 7; i++)
             {
