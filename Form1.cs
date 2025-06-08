@@ -14,7 +14,7 @@ namespace The_luffy_project
     public class CAdvImgActor
     {
         public Bitmap img;
-        public Rectangle rcSrc,rcDst;
+        public Rectangle rcSrc, rcDst;
         public int x, y;
 
     }
@@ -31,7 +31,7 @@ namespace The_luffy_project
         public List<Bitmap> LStandingFrames = new List<Bitmap>();
         public List<Bitmap> LRunningFrames = new List<Bitmap>();
 
-        
+
     }
 
 
@@ -48,7 +48,7 @@ namespace The_luffy_project
         public Moves LD = new Moves();
         public Moves RD = new Moves();
 
-        public int iFrames ;
+        public int iFrames;
 
         // Luffy/LDirection/Running/0.png
         // Luffy/RDirection/Running/0.png
@@ -87,10 +87,16 @@ namespace The_luffy_project
 
         Hero Luffy = new Hero();
 
-        Bitmap off; 
+        Bitmap off;
         // background
-        List<CAdvImgActor>Lbg = new List<CAdvImgActor>();
-        int XA = 0,YA=0,XB=0,YB=0,W=6805,H=1285;
+        List<CAdvImgActor> Lbg = new List<CAdvImgActor>();
+        int XA = 0, YA = 0, XB = 0, YB = 0, W = 6805, H = 1285;
+
+        int Speed = 15;
+        //Jumping
+        int countJumping = 0;
+
+        int flagBalloon = 0;
         public Form1()
         {
             this.WindowState = FormWindowState.Maximized;
@@ -104,10 +110,35 @@ namespace The_luffy_project
         }
         private void Tt_Tick(object sender, EventArgs e)
         {
-            if(Luffy.FStanding==1)
+
+            //else Speed = 15;
+            gravity();
+            if (Luffy.FStanding == 1)
                 AnimateLuffyStanding();
+            if (Luffy.FJumping == 1)
+                AnimateLuffyJumping();
 
             DrawDubb(this.CreateGraphics());
+        }
+        void gravity()
+        {
+            if (Luffy.y < 593)
+            {
+                Luffy.FStanding = 0;
+                Luffy.FJumping = 1;
+                Luffy.y += Speed;
+            }
+            else
+            {
+
+                Speed = 15;
+                if (Luffy.FWalking == 0)
+                    Luffy.FStanding = 1;
+                Luffy.FJumping = 0;
+                countJumping = 0;
+            }
+            Speed += 5;
+
         }
         void AnimateLuffyStanding()
         {
@@ -117,6 +148,18 @@ namespace The_luffy_project
                 Luffy.IndStanding = 0;
             }
         }
+        void AnimateLuffyJumping()
+        {
+            Luffy.IndJumping++;
+            if (Luffy.IndJumping > 2)
+            {
+                Luffy.IndJumping = 2;
+
+
+            }
+            if (Luffy.y >= 593) Luffy.IndJumping = 3;
+
+        }
         private void Form1_Load(object sender, EventArgs e)
         {
             off = new Bitmap(this.ClientSize.Width, this.ClientSize.Height);
@@ -124,21 +167,21 @@ namespace The_luffy_project
             createBG();
             DrawDubb(this.CreateGraphics());
         }
-        void createBG() 
-        { 
+        void createBG()
+        {
             CAdvImgActor pnn = new CAdvImgActor();
             pnn.img = new Bitmap("origExtrabig.png");
-            pnn.rcSrc = new Rectangle(XA,YA, this.ClientSize.Width, pnn.img.Height);
+            pnn.rcSrc = new Rectangle(XA, YA, this.ClientSize.Width, pnn.img.Height);
             pnn.rcDst = new Rectangle(XB, YB, this.ClientSize.Width, this.ClientSize.Height);
             Lbg.Add(pnn);
         }
-        void UseMovement(int N,string name,List<Bitmap> M, List<Bitmap> M2, string Move,string extension)
+        void UseMovement(int N, string name, List<Bitmap> M, List<Bitmap> M2, string Move, string extension)
         {
             for (int i = 0; i < N; i++)
             {
-                Bitmap img = new Bitmap(name + "/LDirection/"+Move+"/" + i + "."+extension);
+                Bitmap img = new Bitmap(name + "/LDirection/" + Move + "/" + i + "." + extension);
                 M.Add(img);
-                       img = new Bitmap(name + "/RDirection/"+Move+"/" +  i + "."+extension);
+                img = new Bitmap(name + "/RDirection/" + Move + "/" + i + "." + extension);
                 M2.Add(img);
             }
         }
@@ -146,7 +189,7 @@ namespace The_luffy_project
         void CreateLuffy()
         {
             Luffy.x = 50;
-            Luffy.y = this.ClientSize.Height-200;
+            Luffy.y = this.ClientSize.Height - 200;
             Luffy.w = 128;
             Luffy.h = 128;
             Luffy.name = "Luffy";
@@ -162,6 +205,7 @@ namespace The_luffy_project
             UseMovement(2, Luffy.name, Luffy.LD.LStandingFrames, Luffy.RD.LStandingFrames, "Standing", "png");
             UseMovement(4, Luffy.name, Luffy.LD.LWalkingFrames, Luffy.RD.LWalkingFrames, "Walking", "png");
             UseMovement(4, Luffy.name, Luffy.LD.LJumpingFrames, Luffy.RD.LJumpingFrames, "Jumping", "png");
+            UseMovement(7, Luffy.name, Luffy.LD.LBalloonFrames, Luffy.RD.LBalloonFrames, "Balloon", "png");
         }
 
         private void Form1_KeyUp(object sender, KeyEventArgs e)
@@ -173,63 +217,111 @@ namespace The_luffy_project
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
-            switch(e.KeyCode) 
+            gravity();
+            switch (e.KeyCode)
             {
                 case Keys.Z:
+                    flagBalloon = 1;
+                    Luffy.FStanding = 0;
+                    Luffy.FJumping = 0;
                     for (int i = 0; i < 6; i++)
                     {
                         Luffy.IndBalloon++;
                         DrawDubb(this.CreateGraphics());
                     }
                     Luffy.IndBalloon = 0;
+                    flagBalloon = 0;
+                    Luffy.FStanding = 1;
                     break;
                 case Keys.Right:
                     Luffy.direction = 'R';
                     Luffy.FStanding = 0;
-                    Luffy.FWalking = 1;
-                    if (Luffy.x + this.ClientSize.Width/4 > this.ClientSize.Width
-                        && Lbg[0].rcSrc.X + 15 +this.ClientSize.Width < Lbg[0].img.Width)
-                        Lbg[0].rcSrc.X += 15;
-                    else
+                    if (Luffy.FJumping == 0)
                     {
-                        if(Luffy.x+Luffy.w+15<this.ClientSize.Width)
-                        Luffy.x += 15;
+                        Luffy.FWalking = 1;
+                        if (Luffy.x + this.ClientSize.Width / 4 > this.ClientSize.Width
+                            && Lbg[0].rcSrc.X + 15 + this.ClientSize.Width < Lbg[0].img.Width)
+                            Lbg[0].rcSrc.X += 15;
+                        else
+                        {
+                            if (Luffy.x + Luffy.w + 15 < this.ClientSize.Width)
+                                Luffy.x += 15;
+                        }
+                        if (Luffy.IndWalking < 3)
+                        {
+                            Luffy.IndWalking++;
+                        }
+                        else
+                        {
+                            Luffy.IndWalking = 0;
+                        }
                     }
-                    //Luffy.x += 15;
-                    if (Luffy.IndWalking < 3)
-                    {
-                        Luffy.IndWalking++;
-                    }
-                    else
-                    {
-                        Luffy.IndWalking=0;
-                    }
+
 
                     break;
                 case Keys.Left:
                     Luffy.direction = 'L';
                     Luffy.FStanding = 0;
-                    Luffy.FWalking = 1;
-                    if (Luffy.x - this.ClientSize.Width / 4 < 0 
-                        && Lbg[0].rcSrc.X - 15 > 0)
-                        Lbg[0].rcSrc.X -= 15;
-                    else
+                    if (Luffy.FJumping == 0)
                     {
-                        if (Luffy.x - 15 > 0)
-                            Luffy.x -= 15;
+                        Luffy.FWalking = 1;
+                        if (Luffy.x - this.ClientSize.Width / 4 < 0
+                            && Lbg[0].rcSrc.X - 15 > 0)
+                            Lbg[0].rcSrc.X -= 15;
+                        else
+                        {
+                            if (Luffy.x - 15 > 0)
+                                Luffy.x -= 15;
+                        }
+                        if (Luffy.IndWalking < 3)
+                        {
+                            Luffy.IndWalking++;
+                        }
+                        else
+                        {
+                            Luffy.IndWalking = 0;
+                        }
                     }
-                    if (Luffy.IndWalking < 3)
-                    {
-                        Luffy.IndWalking++;
-                    }
-                    else
-                    {
-                        Luffy.IndWalking = 0;
-                    }
+
                     break;
                 case Keys.W:
-                    Luffy.FJumping = 1;
+                    if (countJumping < 2)
+                    {
+                        countJumping++;
+                        Luffy.FStanding = 0;
+                        Luffy.FJumping = 1;
+                        Luffy.y -= 105;
+                    }
                     break;
+                case Keys.D:
+                    if (countJumping < 2)
+                    {
+                        Luffy.direction = 'R';
+                        countJumping++;
+                        Luffy.FStanding = 0;
+                        Luffy.FJumping = 1;
+                        if (Luffy.x + 105 < this.ClientSize.Width * 3 / 4)
+                        {
+                            Luffy.y -= 105; Luffy.x += 105;
+                        }
+
+                    }
+                    break;
+                case Keys.A:
+                    if (countJumping < 2)
+                    {
+                        Luffy.direction = 'L';
+                        countJumping++;
+                        Luffy.FStanding = 0;
+                        Luffy.FJumping = 1;
+                        if (Luffy.x > 105)
+                        {
+                            Luffy.y -= 105; Luffy.x -= 105;
+                        }
+
+                    }
+                    break;
+
             }
             DrawDubb(this.CreateGraphics());
 
@@ -247,10 +339,11 @@ namespace The_luffy_project
         void DrawScene(Graphics g2)
         {
             g2.Clear(Color.White);
-            DrawLAdvImages(g2,Lbg);
+            DrawLAdvImages(g2, Lbg);
             DrawLuffy(g2, 2, Luffy, Luffy.RD.LStandingFrames, Luffy.LD.LStandingFrames, Luffy.direction, Luffy.FStanding, Luffy.IndStanding);
             DrawLuffy(g2, 4, Luffy, Luffy.RD.LWalkingFrames, Luffy.LD.LWalkingFrames, Luffy.direction, Luffy.FWalking, Luffy.IndWalking);
             DrawLuffy(g2, 4, Luffy, Luffy.RD.LJumpingFrames, Luffy.LD.LJumpingFrames, Luffy.direction, Luffy.FJumping, Luffy.IndJumping);
+            DrawLuffy(g2, 7, Luffy, Luffy.RD.LBalloonFrames, Luffy.LD.LBalloonFrames, Luffy.direction, flagBalloon, Luffy.IndBalloon);
         }
         void DrawLAdvImages(Graphics g2, List<CAdvImgActor> Limg)
         {
@@ -260,7 +353,7 @@ namespace The_luffy_project
                 g2.DrawImage(bg.img, bg.rcDst, bg.rcSrc, GraphicsUnit.Pixel);
             }
         }
-        void DrawLuffy(Graphics g2, int N, Hero H,List<Bitmap> Limgs,List<Bitmap>Limgs2, Char Direction, int Flag, int IndFrame)
+        void DrawLuffy(Graphics g2, int N, Hero H, List<Bitmap> Limgs, List<Bitmap> Limgs2, Char Direction, int Flag, int IndFrame)
         {
             if (Direction == 'R')
             {
@@ -275,7 +368,7 @@ namespace The_luffy_project
 
             }
         }
-        void DrawDir(List<Bitmap> Limgs, int x, int y, int w, int h, int iFrame,int F,int N, Graphics g2)
+        void DrawDir(List<Bitmap> Limgs, int x, int y, int w, int h, int iFrame, int F, int N, Graphics g2)
         {
             if (F == 1)
             {
