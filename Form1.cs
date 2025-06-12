@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -221,16 +221,17 @@ namespace The_luffy_project
             switch (e.KeyCode)
             {
                 case Keys.Z:
-                    flagBalloon = 1;
+                    Luffy.FBalloon = 1;
                     Luffy.FStanding = 0;
+                    Luffy.FWalking = 0;
                     Luffy.FJumping = 0;
                     for (int i = 0; i < 6; i++)
                     {
-                        Luffy.IndBalloon++;
                         DrawDubb(this.CreateGraphics());
+                        Luffy.IndBalloon++;
                     }
                     Luffy.IndBalloon = 0;
-                    flagBalloon = 0;
+                    Luffy.FBalloon = 0;
                     Luffy.FStanding = 1;
                     break;
                 case Keys.Right:
@@ -318,7 +319,6 @@ namespace The_luffy_project
                         {
                             Luffy.y -= 105; Luffy.x -= 105;
                         }
-
                     }
                     break;
 
@@ -338,12 +338,13 @@ namespace The_luffy_project
         }
         void DrawScene(Graphics g2)
         {
+            int sizeBalloon = 300;
             g2.Clear(Color.White);
             DrawLAdvImages(g2, Lbg);
-            DrawLuffy(g2, 2, Luffy, Luffy.RD.LStandingFrames, Luffy.LD.LStandingFrames, Luffy.direction, Luffy.FStanding, Luffy.IndStanding);
-            DrawLuffy(g2, 4, Luffy, Luffy.RD.LWalkingFrames, Luffy.LD.LWalkingFrames, Luffy.direction, Luffy.FWalking, Luffy.IndWalking);
-            DrawLuffy(g2, 4, Luffy, Luffy.RD.LJumpingFrames, Luffy.LD.LJumpingFrames, Luffy.direction, Luffy.FJumping, Luffy.IndJumping);
-            DrawLuffy(g2, 7, Luffy, Luffy.RD.LBalloonFrames, Luffy.LD.LBalloonFrames, Luffy.direction, flagBalloon, Luffy.IndBalloon);
+            DrawLuffy(g2, 2, Luffy.x,Luffy.y, Luffy.x, Luffy.y, 128,128, Luffy.RD.LStandingFrames, Luffy.LD.LStandingFrames, Luffy.direction, Luffy.FStanding, Luffy.IndStanding);
+            DrawLuffy(g2, 4, Luffy.x,Luffy.y, Luffy.x, Luffy.y, 128,128, Luffy.RD.LWalkingFrames, Luffy.LD.LWalkingFrames, Luffy.direction, Luffy.FWalking, Luffy.IndWalking);
+            DrawLuffy(g2, 4, Luffy.x,Luffy.y, Luffy.x, Luffy.y, 128,128, Luffy.RD.LJumpingFrames, Luffy.LD.LJumpingFrames, Luffy.direction, Luffy.FJumping, Luffy.IndJumping);
+            DrawLuffy(g2, 7, Luffy.x, Luffy.y-100, Luffy.x - 148, Luffy.y - 100, sizeBalloon, sizeBalloon, Luffy.RD.LBalloonFrames, Luffy.LD.LBalloonFrames, Luffy.direction, Luffy.FBalloon, Luffy.IndBalloon);
         }
         void DrawLAdvImages(Graphics g2, List<CAdvImgActor> Limg)
         {
@@ -353,18 +354,18 @@ namespace The_luffy_project
                 g2.DrawImage(bg.img, bg.rcDst, bg.rcSrc, GraphicsUnit.Pixel);
             }
         }
-        void DrawLuffy(Graphics g2, int N, Hero H, List<Bitmap> Limgs, List<Bitmap> Limgs2, Char Direction, int Flag, int IndFrame)
+        void DrawLuffy(Graphics g2, int N, int x,int y, int x2, int y2, int Width,int Height, List<Bitmap> Limgs, List<Bitmap> Limgs2, Char Direction, int Flag, int IndFrame)
         {
             if (Direction == 'R')
             {
                 if (Flag == 1)
-                    DrawDir(Limgs, H.x, H.y, H.w, H.h, IndFrame, Flag, N, g2);
+                    DrawDir(Limgs, x, y, Width, Height, IndFrame, Flag, N, g2);
 
             }
             else if (Direction == 'L')
             {
                 if (Flag == 1)
-                    DrawDir(Limgs2, H.x, H.y, H.w, H.h, IndFrame, Flag, N, g2);
+                    DrawDir(Limgs2, x2, y2, Width, Height, IndFrame, Flag, N, g2);
 
             }
         }
