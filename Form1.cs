@@ -4,10 +4,12 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
+using System.Xml.Linq;
 
 namespace The_luffy_project
 {
@@ -23,13 +25,20 @@ namespace The_luffy_project
         public Bitmap img;
         public Rectangle rcSrc, rcDst;
         public int x, y;
-
     }
 
     public class CMulImgActor
     {
         public List<Bitmap> img = new List<Bitmap>();
         public int x, y;
+    }
+
+    public class CImgActor
+    {
+        public Bitmap img;
+        public int x, y;
+        public int w, h;
+        public int dx;
     }
 
     public class Moves
@@ -99,30 +108,44 @@ namespace The_luffy_project
         Hero Crocodile = new Hero();
         Hero Enel = new Hero();
         CMulImgActor Laser = new CMulImgActor();
+        CImgActor ladder = new CImgActor();
+        List<CImgActor> Platform = new List<CImgActor>();
 
-        //
         Bitmap off;
+        
         // background
         List<CAdvImgActor> Lbg = new List<CAdvImgActor>();
         int XA = 0, YA = 0, XB = 0, YB = 0, W = 6805, H = 1285;
 
-        int Speed = 15;
+        int WalkSpeed = 45; // multiple of 15 (15, 30, 45, 60)
+        int FallSpeed = 15;
         //Jumping
         int countJumping = 0;
-
-        int flagBalloon = 0;
 
         int CtTick = 0;
 
         // enel laser attack flag
         bool FEnelAttack = false;
 
+        bool IsLadder = false;
+        bool IsOnPlatform = false;
+
+        int EnelDistFromGround = 0;
+
+        Random rr = new Random();
+        int start_plat = 0;
+        int end_plat = 0;
+
         //HP Lives 
         List<CActor> LHP = new List<CActor>();
 
+        // bullets\bones
+        List<CImgActor> bullets = new List<CImgActor>();
+
         //Crocodile Attack Time
         int ctcrocpunch = 0;
-        bool IsCrocodileAlive = false;
+        bool IsCrocodileAlive = true;
+        bool IsEnelAlive = true;
         public Form1()
         {
             this.WindowState = FormWindowState.Maximized;
@@ -139,23 +162,22 @@ namespace The_luffy_project
             // for attack and enemy times
             CtTick++;
 
-            if (CtTick % 15  == 0)
+            if (CtTick % 10 == 0)
                 FEnelAttack = true;
 
             if (FEnelAttack)
             {
                 Enel.IndPunching1++;
-                if (Enel.IndPunching1 > 5)
-                {
-                    Enel.IndPunching1 = 0;
-                    FEnelAttack = false;
-                }
+                AnimateEnel();
             }
 
+            if (Enel.x > Luffy.x)
+                Enel.direction = 'L';
+            else
+                Enel.direction = 'R';
 
-
-            //else Speed = 15;
-            gravity();
+                //else Speed = 15;
+                gravity();
             if (Luffy.FStanding == 1)
                 AnimatLuffyeStanding();
             if (Luffy.FJumping == 1)
@@ -172,6 +194,9 @@ namespace The_luffy_project
             {
                 Luffy.FStanding = 0;
                 Luffy.IndBalloon++;
+                if (Luffy.IndBalloon == 4)
+                    CreateMulBullet();
+
                 if (Luffy.IndBalloon == 6)
                 {
                     Luffy.IndBalloon = 0;
@@ -179,6 +204,7 @@ namespace The_luffy_project
                     Luffy.FStanding = 1;
                 }
             }
+
 
             AnimateCrocodile();
             if (Crocodile.HP.w2 <= 0)
@@ -190,6 +216,9 @@ namespace The_luffy_project
             Crocodile.IndWalking++;
             ctcrocpunch++;
 
+            MoveBullet();
+            hitBullet();
+            DrawDubb(this.CreateGraphics());
         }
         void AnimateCrocodile()
         {
@@ -209,7 +238,7 @@ namespace The_luffy_project
                             Crocodile.IndPunching1++;
 
                         }
-                        //
+                        // luffy getting hit by crocodile
                         Luffy.FStanding = 0;
                         Luffy.FFalling = 1;
                         Luffy.IndFalling = 0;
@@ -258,6 +287,100 @@ namespace The_luffy_project
             }
 
         }
+        void AnimateEnel()
+        {
+            if (IsEnelAlive)
+            {
+                if (Enel.IndPunching1 > 5)
+                {
+                    Enel.IndPunching1 = 0;
+                    FEnelAttack = false;
+                    Enel.x = rr.Next(start_plat, end_plat);
+                    Laser.x = Enel.x + 30;
+                }
+
+                if (Enel.IndPunching1 == 3)
+                {
+                    bool hit = CheckLuffyHit();
+                    if (hit)
+                    {
+                        // luffy getting hit by enel
+                        Luffy.FStanding = 0;
+                        Luffy.FFalling = 1;
+                        Luffy.IndFalling = 0;
+                        for (int i = 0; i < 2; i++)
+                        {
+                            DrawDubb(this.CreateGraphics());
+                            Luffy.IndFalling++;
+                        }
+                        Luffy.FStanding = 1;
+                        Luffy.FFalling = 0;
+                        Luffy.HP.w2 -= 20;
+                    }
+                }
+            }
+        }
+        void MoveBullet()
+        {
+            for (int i = 0; i < bullets.Count; i++)
+            {
+                bullets[i].x += 30 * bullets[i].dx;
+            }
+        }
+        void hitBullet()
+        {
+            // crocodile
+            for (int i = 0; i < bullets.Count; i++)
+            {
+                CImgActor ptr = bullets[i];
+                if (IsCrocodileAlive)
+                {
+                    if (ptr.dx == 1)
+                    {
+                        if (ptr.x + ptr.img.Width >= Crocodile.x && ptr.x < Crocodile.x)
+                        {
+                            Crocodile.HP.w2 -= 10;
+                            bullets.RemoveAt(i);
+                        }
+                    }
+                    if (ptr.dx == -1)
+                    {
+                        if (ptr.x <= Crocodile.x + Crocodile.w && ptr.x >= Crocodile.x)
+                        {
+                            Crocodile.HP.w2 -= 10;
+                            bullets.RemoveAt(i);
+                        }
+                    }
+                }
+
+                //Enel
+                if (IsEnelAlive)
+                {
+                    if (ptr.dx == 1)
+                    {
+                        if (ptr.x + ptr.img.Width >= Enel.x && ptr.x < Enel.x)
+                        {
+                            IsEnelAlive = false;
+                            bullets.RemoveAt(i);
+                        }
+                    }
+                    if (ptr.dx == -1)
+                    {
+                        if (ptr.x <= Enel.x + Enel.w && ptr.x >= Enel.x)
+                        {
+                            IsEnelAlive = false;
+                            bullets.RemoveAt(i);
+                        }
+                    }
+                }
+
+                // collide with borders
+                if (ptr.x <= 0 || ptr.x >= this.ClientSize.Width)
+                {
+                    bullets.Remove(ptr);
+                }
+            }
+        }
         bool IsLuffyClosetoCrocodile()
         {
             if (
@@ -269,23 +392,56 @@ namespace The_luffy_project
             }
             return false;
         }
+        bool CheckLuffyHit()
+        {
+            // check for luffy collision with laser
+            if ((Luffy.x >= Laser.x && Luffy.x <= Laser.x + Laser.img[0].Width) || (Luffy.x + Luffy.w >= Laser.x && Luffy.x <= Laser.x + Laser.img[0].Width))
+            {
+                return true;
+            }
+
+            return false;
+        }
         void gravity()
         {
-            if (Luffy.y < 593)
+            // add ladder interaction
+            if (Luffy.x >= ladder.x && Luffy.x < ladder.x + ladder.w + 100)
             {
-                Luffy.FStanding = 0;
-                Luffy.FJumping = 1;
-                Luffy.y += Speed;
+                IsLadder = true;
             }
             else
+                IsLadder = false;
+
+            // add platform interaction
+            if (Luffy.x >= Platform[0].x && Luffy.x <= Platform[Platform.Count - 1].x + Platform[Platform.Count - 1].w // X-axis
+                && Luffy.y + Luffy.h <= Platform[0].y) // Y-axis
             {
-                Speed = 15;
-                if (Luffy.FWalking == 0)
-                    Luffy.FStanding = 1;
-                Luffy.FJumping = 0;
-                countJumping = 0;
+                IsOnPlatform = true;
             }
-            Speed += 5;
+
+            if (Platform[0].y - (Luffy.y + Luffy.h) > 0)
+            {
+                Luffy.y += FallSpeed;
+            }
+
+            if (!IsLadder && !IsOnPlatform)
+            {
+                if (Luffy.y < 593)
+                {
+                    Luffy.FStanding = 0;
+                    Luffy.FJumping = 1;
+                    Luffy.y += FallSpeed;
+                }
+                else
+                {
+                    FallSpeed = 15;
+                    if (Luffy.FWalking == 0)
+                        Luffy.FStanding = 1;
+                    Luffy.FJumping = 0;
+                    countJumping = 0;
+                }
+                FallSpeed += 5;
+            }
 
         }
         void AnimatLuffyeStanding()
@@ -297,7 +453,6 @@ namespace The_luffy_project
             }
 
         }
-
         void AnimateLuffyJumping()
         {
             Luffy.IndJumping++;
@@ -316,6 +471,7 @@ namespace The_luffy_project
             CreateLuffy();
             CreateCrocodile();
             CreateEnel();
+            CreateIsland();
             createBG();
             DrawDubb(this.CreateGraphics());
         }
@@ -326,6 +482,32 @@ namespace The_luffy_project
             pnn.rcSrc = new Rectangle(XA, YA, this.ClientSize.Width, pnn.img.Height);
             pnn.rcDst = new Rectangle(XB, YB, this.ClientSize.Width, this.ClientSize.Height);
             Lbg.Add(pnn);
+            ladder.img = new Bitmap("ladder_0.png");
+            ladder.x = end_plat;
+            ladder.y = Platform[0].y;
+            ladder.w = 100;
+            ladder.h = 500;
+        }
+        void CreateMulBullet()
+        {
+            if (Luffy.direction == 'R')
+            {
+                CImgActor pnn = new CImgActor();
+                pnn.img = new Bitmap("Bone_0.png");
+                pnn.x = Luffy.x + 300;
+                pnn.y = Luffy.y - 50;
+                pnn.dx = 1;
+                bullets.Add(pnn);
+            }
+            else
+            {
+                CImgActor pnn = new CImgActor();
+                pnn.img = new Bitmap("Bone_0.png");
+                pnn.x = Luffy.x - 300;
+                pnn.y = Luffy.y - 50;
+                pnn.dx = -1;
+                bullets.Add(pnn);
+            }
         }
         void UseMovement(int N, string name, List<Bitmap> M, List<Bitmap> M2, string Move, string extension)
         {
@@ -337,7 +519,6 @@ namespace The_luffy_project
                 M2.Add(img);
             }
         }
-
         void CreateLuffy()
         {
             Luffy.x = 50;//50
@@ -366,10 +547,10 @@ namespace The_luffy_project
         }
         void CreateCrocodile()
         {
-            Crocodile.x = this.ClientSize.Width - this.ClientSize.Width / 4;
-            Crocodile.y = this.ClientSize.Height - 260;
-            Crocodile.w = 128;
-            Crocodile.h = 181;
+            Crocodile.x = (int)((this.ClientSize.Width - this.ClientSize.Width / 4) * 2.5);
+            Crocodile.y = this.ClientSize.Height - 272;
+            Crocodile.w = 200; //128
+            Crocodile.h = 200; //181
             Crocodile.direction = 'L';
             Crocodile.name = "Crocodile";
             //Index of Frames = 0
@@ -385,7 +566,7 @@ namespace The_luffy_project
         }
         void CreateEnel()
         {
-            Enel.x = this.ClientSize.Width / 5;
+            Enel.x = this.ClientSize.Width / 3;
             Enel.y = this.ClientSize.Height / 10;
             Enel.w = 130;
             Enel.h = 158;
@@ -397,6 +578,47 @@ namespace The_luffy_project
             Enel.FPunching1 = 1;
             //Enel Moves
             UseMovement(6, Enel.name, Enel.LD.LPunching1Frames, Enel.RD.LPunching1Frames, "Lightning", "png");
+
+            // enter the laser
+            Laser.x = Enel.x + 30;
+            Laser.y = Enel.y + Enel.h;
+            Bitmap img;
+            // add top segment
+            img = new Bitmap("Laser" + "/" + "0" + "." + "png");
+            Laser.img.Add(img);
+
+            // add middle segments
+            for (int i = 0; i < 6; i++)
+            {
+                if (i % 2 == 0)
+                    img = new Bitmap("Laser" + "/" + "1" + "." + "png");
+                else
+                    img = new Bitmap("Laser" + "/" + "2" + "." + "png");
+                Laser.img.Add(img);
+            }
+
+            // add end segment
+            img = new Bitmap("Laser" + "/" + "3" + "." + "png");
+            Laser.img.Add(img);
+
+            EnelDistFromGround = 721 - (Enel.y + Enel.h);
+        }
+        void CreateIsland()
+        {
+            for (int i = 0;i < 6;i++)
+            {
+                CImgActor pnn = new CImgActor();
+                // add platform
+                pnn.img = new Bitmap("Island_0.png");
+                pnn.x = 600 + (150 * i) - 150;
+                pnn.y = Enel.y + 175;
+                Platform.Add(pnn);
+
+                if (i == 0)
+                    start_plat = pnn.x;
+                if (i == 5)
+                    end_plat = pnn.x;
+            }
 
         }
         public void CreateLuffyHP(Hero H)
@@ -436,7 +658,6 @@ namespace The_luffy_project
             Luffy.FPunching1 = 0;
             Crocodile.FStanding = 1;
         }
-
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
             gravity();
@@ -445,6 +666,18 @@ namespace The_luffy_project
             //    MessageBox.Show("Game Over");
             //}
             AnimateCrocodile();
+            MoveBullet();
+            hitBullet();
+            CtTick++;
+
+            if (CtTick % 20 == 0)
+                FEnelAttack = true;
+
+            if (FEnelAttack)
+            {
+                Enel.IndPunching1++;
+                AnimateEnel();
+            }
             Crocodile.IndStanding++;
             if (Crocodile.IndStanding > 3)
             {
@@ -470,13 +703,22 @@ namespace The_luffy_project
                         if (Luffy.x + this.ClientSize.Width / 4 > this.ClientSize.Width
                             && Lbg[0].rcSrc.X + 15 + this.ClientSize.Width < Lbg[0].img.Width)
                         {
-                            Lbg[0].rcSrc.X += 15;
-                            Crocodile.x -= 15;
+                            Lbg[0].rcSrc.X += WalkSpeed;
+                            Crocodile.x -= WalkSpeed;
+                            Enel.x -= WalkSpeed;
+                            for (int i = 0; i < Platform.Count; i++)
+                            {
+                                Platform[i].x -= WalkSpeed;
+                            }
+                            Laser.x -= WalkSpeed;
+                            start_plat -= WalkSpeed;
+                            end_plat -= WalkSpeed;
+                            ladder.x -= WalkSpeed;
                         }
                         else
                         {
                             if (Luffy.x + Luffy.w + 15 < this.ClientSize.Width)
-                                Luffy.x += 15;
+                                Luffy.x += WalkSpeed;
                         }
                         if (Luffy.IndWalking < 3)
                         {
@@ -497,11 +739,24 @@ namespace The_luffy_project
                         Luffy.FWalking = 1;
                         if (Luffy.x - this.ClientSize.Width / 4 < 0
                             && Lbg[0].rcSrc.X - 15 > 0)
-                            Lbg[0].rcSrc.X -= 15;
+                        {
+                            Lbg[0].rcSrc.X -= WalkSpeed;
+                            Crocodile.x += WalkSpeed;
+                            Enel.x += WalkSpeed;
+                            for (int i = 0; i < Platform.Count; i++)
+                            {
+                                Platform[i].x += WalkSpeed;
+                            }
+                            Laser.x += WalkSpeed;
+                            start_plat += WalkSpeed;
+                            end_plat += WalkSpeed;
+                            ladder.x += WalkSpeed;
+
+                        }
                         else
                         {
                             if (Luffy.x - 15 > 0)
-                                Luffy.x -= 15;
+                                Luffy.x -= WalkSpeed;
                         }
                         if (Luffy.IndWalking < 3)
                         {
@@ -513,6 +768,20 @@ namespace The_luffy_project
                         }
                     }
 
+                    break;
+                //Go up ladder
+                case Keys.Up:
+                    if (IsLadder && Luffy.y > 70)
+                    {
+                        Luffy.y -= WalkSpeed;
+                    }
+                    break;
+                //Go Down ladder
+                case Keys.Down:
+                    if (IsLadder && Luffy.y < 722)
+                    {
+                        Luffy.y += WalkSpeed;
+                    }
                     break;
                 //Jump Up
                 case Keys.W:
@@ -649,8 +918,39 @@ namespace The_luffy_project
                 }
             }
 
+            // Draw platforms
+            for (int i = 0; i < Platform.Count; i++)
+            {
+                g2.DrawImage(Platform[i].img, Platform[i].x, Platform[i].y, 150, 100);
+            }
             //Enel
-            DrawCharacter(g2, 6, Enel.x, Enel.y, Enel.x, Enel.y, 200, 200, Enel.RD.LStandingFrames, Enel.LD.LPunching1Frames, Enel.direction, Enel.FPunching1, Enel.IndPunching1);
+            if (IsEnelAlive)
+            {
+                DrawCharacter(g2, 6, Enel.x, Enel.y, Enel.x, Enel.y, 200, 200, Enel.RD.LPunching1Frames, Enel.LD.LPunching1Frames, Enel.direction, Enel.FPunching1, Enel.IndPunching1);
+
+
+                // draw laser
+                if (Enel.IndPunching1 == 3)
+                {
+                    int gap = EnelDistFromGround / Laser.img.Count;
+                    for (int i = 0; i < Laser.img.Count; i++)
+                    {
+                        g2.DrawImage(Laser.img[i], Laser.x, Laser.y + (i * gap));
+                    }
+                }
+            }
+            // multi bullet
+            for (int i = 0; i < bullets.Count; i++)
+            {
+                g2.DrawImage(bullets[i].img, bullets[i].x, bullets[i].y);
+            }
+
+            // ladder
+            g2.DrawImage(ladder.img, ladder.x + 150, ladder.y, ladder.w, ladder.h);
+
+            // add game over screen
+
+            // add game won screen
         }
         void DrawLAdvImages(Graphics g2, List<CAdvImgActor> Limg)
         {
