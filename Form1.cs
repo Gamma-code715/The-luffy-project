@@ -153,8 +153,8 @@ namespace The_luffy_project
 
         //Crocodile Attack Time
         int ctcrocpunch = 0;
-        bool IsCrocodileAlive = false;
-        bool IsEnelAlive = false;
+        bool IsCrocodileAlive = true;
+        bool IsEnelAlive = true;
         bool FGameOver = false;
         public Form1()
         {
@@ -399,8 +399,8 @@ namespace The_luffy_project
         bool IsLuffyClosetoCrocodile()
         {
             if (
-                (Luffy.x + Luffy.w >= Crocodile.x && Luffy.x + Luffy.w < Crocodile.x + Crocodile.w && Luffy.direction == 'R')
-                 || (Crocodile.x + Crocodile.w >= Luffy.x && Crocodile.x + Crocodile.w < Luffy.x + Luffy.w && Luffy.direction == 'L')
+                (Luffy.x + Luffy.w >= Crocodile.x && Luffy.x + Luffy.w < Crocodile.x + Crocodile.w && !(Luffy.y <= (Crocodile.y - 100)) && Luffy.direction == 'R')
+                 || (Crocodile.x + Crocodile.w >= Luffy.x && Crocodile.x + Crocodile.w < Luffy.x + Luffy.w && !(Luffy.y <= (Crocodile.y - 100)) && Luffy.direction == 'L')
                 )
             {
                 return true;
@@ -429,17 +429,20 @@ namespace The_luffy_project
 
             // add platform interaction
             if (Luffy.x >= Platform[0].x && Luffy.x <= Platform[Platform.Count - 3].x + Platform[Platform.Count - 3].w // X-axis
-                && Luffy.y + Luffy.h <= Platform[0].y) // Y-axis
+                && Luffy.y + Luffy.h <= Platform[0].y + 30) // Y-axis
             {
                 IsOnPlatform = true;
                 countJumping = 0;
             }
-
-            if (Luffy.x >= Platform[Platform.Count - 2].x && Luffy.x <= Platform[Platform.Count - 1].x + Platform[Platform.Count - 1].w // X-axis
+            else if (Luffy.x >= Platform[Platform.Count - 2].x && Luffy.x <= Platform[Platform.Count - 1].x + Platform[Platform.Count - 1].w // X-axis
                 && Luffy.y + Luffy.h <= Platform[Platform.Count - 1].y) // Y-axis
             {
                 IsOnPlatform = true;
                 countJumping = 0;
+            }
+            else
+            { 
+                IsOnPlatform = false;
             }
 
             if (Platform[0].y - (Luffy.y + Luffy.h) > 0 && IsOnPlatform)
